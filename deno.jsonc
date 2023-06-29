@@ -1,5 +1,5 @@
 {
     "tasks": {
-        "start": "deno run --allow-net --allow-read --allow-env --allow-run cmd/proxy/main.ts"
+        "start": "deno run --allow-all cmd/proxy/main.ts config.js"
     }
 }

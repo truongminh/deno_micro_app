@@ -1,7 +1,12 @@
 import "https://deno.land/x/dotenv/load.ts";
+import * as path from 'https://deno.land/std/path/mod.ts';
 
 import { logger } from "./log.ts";
-import { IApp, NewApp } from "./app.ts";
+import { NewAppList } from "./app.ts";
+
+const config_file = path.toFileUrl(path.join(Deno.cwd(), Deno.args[0]));
+logger.info("config file", config_file);
+const config = await import(config_file.toString());
 
 const Config = {
     Port: Number(Deno.env.get("PORT")) || 3000,
@@ -14,31 +19,7 @@ const env = {
 // Start listening on port 8080 of localhost.
 const server = Deno.listen({ port: Config.Port });
 logger.info(`HTTP webserver running.  Access it at:  http://localhost:${Config.Port}/`);
-
-const auth_app: IApp = {
-    id: "auth",
-    cwd: "cmd/auth",
-    exe: "deno",
-    args: ["run", "--watch", "--allow-net", "--allow-read", "--allow-env", "main.ts"],
-    http: {
-        port: 3001,
-        path: "/api/auth",
-    }
-};
-
-const apps = [
-    NewApp(auth_app, env)
-];
-
-async function matchAppUrl(url: URL) {
-    for (const app of apps) {
-        const match_url = await app.match(url);
-        if (match_url) {
-            return match_url;
-        }
-    }
-    return null;
-}
+const app_list = NewAppList(config.apps, env);
 
 async function serveHttp(conn: Deno.Conn) {
     // This "upgrades" a network connection into an HTTP connection.
@@ -46,11 +27,13 @@ async function serveHttp(conn: Deno.Conn) {
     for await (const requestEvent of httpConn) {
         try {
             const _url = new URL(requestEvent.request.url);
-            let url = await matchAppUrl(_url);
+            let url = await app_list.match(_url);
             if (!url) {
                 requestEvent.respondWith(new Response("not found", { status: 404 }));
+                logger.info(new Date(), requestEvent.request.method, requestEvent.request.url, `not found`);
                 return;
             }
+            logger.info("proxy", url.toString());
             const start = new Date();
             await requestEvent.respondWith(fetch(url.toString(), requestEvent.request));
             const end = new Date();

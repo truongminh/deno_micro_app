@@ -4,7 +4,7 @@ import { ListMasterData } from "../../repo/mdata.ts";
 
 const router = new Router();
 
-router.get("/mdata/list", async (ctx) => {
+router.get("/list", async (ctx) => {
     ctx.response.body = await ListMasterData();
 });
 

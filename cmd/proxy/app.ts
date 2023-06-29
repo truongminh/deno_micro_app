@@ -1,6 +1,6 @@
 import { NewLogger } from "./log.ts";
 
-export interface IApp {
+interface IApp {
     id: string;
     cwd: string;
     exe: string;
@@ -13,7 +13,7 @@ export interface IApp {
 
 const sleep = (t = 1000) => new Promise(r => setTimeout(r, t));
 
-export function NewApp(app: IApp, run_env: Record<string, string>) {
+function NewApp(app: IApp, run_env: Record<string, string>) {
     const hostname = "127.0.0.1";
     const port = `${app.http?.port}`;
     const logger = NewLogger(app.id);
@@ -33,6 +33,21 @@ export function NewApp(app: IApp, run_env: Record<string, string>) {
             }
         }
         return false;
+    }
+
+    const pipe = async (stream: ReadableStream<Uint8Array>) => {
+        while (stream.locked) {
+            await sleep();
+        }
+        const reader = stream.getReader();
+        while (true) {
+            const data = await reader.read();
+            if (data.done) {
+                return;
+            } else {
+                Deno.stdout.write(data.value);
+            }
+        }
     }
 
     const spawn = async () => {
@@ -55,8 +70,15 @@ export function NewApp(app: IApp, run_env: Record<string, string>) {
         );
         logger.info("spawn", app);
         proc = command.spawn();
-        proc.stdout.pipeTo(Deno.stdout.writable);
-        proc.stderr.pipeTo(Deno.stderr.writable);
+        const reader = proc.stdout.getReader();
+        const data = await reader.read();
+        if (data.done) {
+
+        } else {
+            Deno.stdout.write(data.value);
+        }
+        pipe(proc.stdout);
+        pipe(proc.stderr);
         await sleep();
         await check();
     }
@@ -69,7 +91,7 @@ export function NewApp(app: IApp, run_env: Record<string, string>) {
         if (!url.pathname.startsWith(path)) {
             return null;
         }
-        url.pathname = url.pathname.substring("/api/auth".length);
+        url.pathname = url.pathname.substring(path.length);
         url.hostname = "127.0.0.1";
         url.port = port.toString();
         await spawn();
@@ -77,4 +99,20 @@ export function NewApp(app: IApp, run_env: Record<string, string>) {
     }
 
     return { match }
+}
+
+export function NewAppList(apps: IApp[], run_env: Record<string, string>) {
+    const app_list = apps.map(app => NewApp(app, run_env));
+    const match = async (url: URL) => {
+        for (const app of app_list) {
+            const match_url = await app.match(url);
+            if (match_url) {
+                return match_url;
+            }
+        }
+        return null;
+    }
+    return {
+        match
+    }
 }
