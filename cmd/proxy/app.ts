@@ -17,7 +17,7 @@ function NewApp(app: IApp, run_env: Record<string, string>) {
     const hostname = "127.0.0.1";
     const port = `${app.http?.port}`;
     const logger = NewLogger(app.id);
-    let proc: Deno.ChildProcess;
+    let proc: Deno.ChildProcess | null;
     const check = async () => {
         const check_url = `http://${hostname}:${port}/ping`;
         while (true) {
@@ -43,6 +43,7 @@ function NewApp(app: IApp, run_env: Record<string, string>) {
         while (true) {
             const data = await reader.read();
             if (data.done) {
+                reader.releaseLock();
                 return;
             } else {
                 Deno.stdout.write(data.value);
@@ -70,17 +71,11 @@ function NewApp(app: IApp, run_env: Record<string, string>) {
         );
         logger.info("spawn", app);
         proc = command.spawn();
-        const reader = proc.stdout.getReader();
-        const data = await reader.read();
-        if (data.done) {
-
-        } else {
-            Deno.stdout.write(data.value);
-        }
         pipe(proc.stdout);
         pipe(proc.stderr);
         await sleep();
         await check();
+        proc.status.then(() => proc = null);
     }
 
     const path = app.http?.path;

@@ -5,7 +5,7 @@ import { logger } from "./log.ts";
 import { NewAppList } from "./app.ts";
 
 const config_file = path.toFileUrl(path.join(Deno.cwd(), Deno.args[0]));
-logger.info("config file", config_file);
+logger.info("config file", config_file.href);
 const config = await import(config_file.toString());
 
 const Config = {
@@ -27,7 +27,7 @@ async function serveHttp(conn: Deno.Conn) {
     for await (const requestEvent of httpConn) {
         try {
             const _url = new URL(requestEvent.request.url);
-            let url = await app_list.match(_url);
+            const url = await app_list.match(_url);
             if (!url) {
                 requestEvent.respondWith(new Response("not found", { status: 404 }));
                 logger.info(new Date(), requestEvent.request.method, requestEvent.request.url, `not found`);
