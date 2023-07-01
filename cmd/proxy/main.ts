@@ -35,7 +35,15 @@ async function serveHttp(conn: Deno.Conn) {
             }
             logger.info("proxy", url.toString());
             const start = new Date();
-            await requestEvent.respondWith(fetch(url.toString(), requestEvent.request));
+            const request: RequestInit = {
+                method: requestEvent.request.method,
+            };
+            if (request.method === "POST" || request.method === "PATCH" || request.method === "PUT") {
+                const buf = await requestEvent.request.arrayBuffer();
+                request.body = buf;
+            };
+            const resp = await fetch(url.toString(), request);
+            await requestEvent.respondWith(resp);
             const end = new Date();
             const ellapsed = end.getTime() - start.getTime();
             logger.info(start, requestEvent.request.method, requestEvent.request.url, `${ellapsed}ms`);

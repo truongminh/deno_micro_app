@@ -1,7 +1,7 @@
 export type {
     Document as MongoDocument,
 } from "https://deno.land/x/mongo@v0.31.2/mod.ts";
-import { MongoClient } from "https://deno.land/x/mongo@v0.31.2/mod.ts";
+import { Document, MongoClient } from "https://deno.land/x/mongo@v0.31.2/mod.ts";
 
 async function Connect(url: string) {
     const client = new MongoClient();
@@ -37,17 +37,21 @@ function renameIdTo_id(doc: any) {
 }
 
 export const ToMongoData = {
-    Many<T>(docs: T[]) {
-        return docs.map(renameIdTo_id)
+    Many<T>(records: T[]): Document[] {
+        return records.map(renameIdTo_id);
     },
-    One: renameIdTo_id
+    One<T>(record: T): Document {
+        return renameIdTo_id(record);
+    }
 }
 
 export const FromMongoData = {
-    Many<T>(docs: T[]) {
+    Many<T>(docs: Document[]): T[] {
         return docs.map(rename_idToId);
     },
-    One: rename_idToId
+    One<T>(doc: Document | undefined): T {
+        return rename_idToId(doc);
+    }
 }
 
 import { logger } from "../lib/log.ts";

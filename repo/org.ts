@@ -10,6 +10,6 @@ export interface Org {
 export async function ListOrg() {
     const filter = {};
     const docs = await db.collection("org").find(filter).toArray();
-    const orgs: Org[] = FromMongoData.Many(docs);
+    const orgs = FromMongoData.Many<Org>(docs);
     return orgs;
 }
