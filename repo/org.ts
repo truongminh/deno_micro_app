@@ -7,6 +7,12 @@ export interface Org {
     parent_id?: string;
 }
 
+export interface User {
+    id: string;
+    username: string;
+    org_id: string;
+}
+
 export async function ListOrg() {
     const filter = {};
     const docs = await db.collection("org").find(filter).toArray();
